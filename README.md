@@ -127,6 +127,33 @@ export API_KEY="your-api-key"
 Benchmark runners may also pass separate FastContext credentials through `FASTCONTEXT_*` variables in
 `benchmark/evaluation/configs/example.env`.
 
+### Choosing a model format
+
+The explorer weights are available in several formats — pick whichever fits your setup:
+
+| Format | Where | Size | Notes |
+| --- | --- | --- | --- |
+| BF16 safetensors | [ShaunGves/FastContext-1.0-4B-SFT](https://huggingface.co/ShaunGves/FastContext-1.0-4B-SFT) | ~8 GB | Original weights; serve with mlx-lm, vLLM, or SGLang. |
+| MLX 8-bit | [mlx-community/FastContext-1.0-4B-SFT-8bit](https://huggingface.co/mlx-community/FastContext-1.0-4B-SFT-8bit) | ~4 GB | **Recommended local quant.** Tested accurate with LM Studio and mlx-lm on Apple Silicon. |
+| MLX 4-bit | [mlx-community/FastContext-1.0-4B-SFT-4bit](https://huggingface.co/mlx-community/FastContext-1.0-4B-SFT-4bit) | ~2.1 GB | Degraded path grounding in testing (hallucinated citations); only for tight memory. |
+| GGUF Q8 | [mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF](https://huggingface.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF) | ~4.3 GB | For Ollama / llama.cpp: `ollama pull hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF`. |
+
+**LM Studio**: download either MLX quant from the search tab (MLX runtime), load it, start the local
+server, and point the CLI at `BASE_URL=http://localhost:1234/v1` with `MODEL` set to the LM Studio model
+identifier (e.g. `fastcontext-1.0-4b-sft`).
+
+**Ollama**: `ollama pull` the GGUF above, then use `BASE_URL=http://localhost:11434/v1` with `MODEL` set
+to the pulled model name.
+
+For quantized models, lower the sampling temperature and cap generation length via the environment
+overrides (defaults match the paper's serving setup):
+
+```bash
+export TEMPERATURE=0.6   # default 1.0
+export TOP_P=0.95        # default 0.95
+export MAX_TOKENS=4000   # default 32000; a missed stop token otherwise generates for minutes
+```
+
 ### Local serving on Apple Silicon (mlx-lm)
 
 The original BF16 safetensors run directly on Apple Silicon via [mlx-lm](https://github.com/ml-explore/mlx-lm)
