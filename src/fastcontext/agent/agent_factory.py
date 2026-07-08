@@ -21,6 +21,9 @@ def make_fastcontext_agent(
         model=os.getenv("MODEL"),
         api_key=os.getenv("API_KEY"),
         base_url=os.getenv("BASE_URL"),
+        temperature=float(os.getenv("TEMPERATURE", "1.0")),
+        top_p=float(os.getenv("TOP_P", "0.95")),
+        max_tokens=int(os.getenv("MAX_TOKENS", "32000")),
     )
 
     from fastcontext.agent.tool.glob import GlobTool
