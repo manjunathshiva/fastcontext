@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from uuid import uuid4
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageToolCall
@@ -118,15 +119,21 @@ class LLM:
                 raise ValueError("No choices returned from LLM API call.")
 
             if tool_calls:
+                # Some OpenAI-compatible servers (e.g. mlx-lm) omit tool call ids.
                 function_calls = [
-                    FunctionCall(id=tc.id, name=tc.function.name, arguments=tc.function.arguments) for tc in tool_calls
+                    FunctionCall(
+                        id=tc.id or f"call_{uuid4().hex[:12]}",
+                        name=tc.function.name,
+                        arguments=tc.function.arguments,
+                    )
+                    for tc in tool_calls
                 ]
                 return Message(
                     role=role,
                     content=content,
                     reasoning_content=reasoning_content,
                     tool_calls=function_calls,
-                    tool_call_id=tool_calls[0].id,
+                    tool_call_id=function_calls[0].id,
                     model=self.model,
                     usage=usage,
                 )

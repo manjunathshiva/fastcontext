@@ -16,6 +16,11 @@
   <a href="#citation">📚 Citation</a>
 </p>
 
+> **About this mirror**: The original `microsoft/fastcontext` repository and official model listings were
+> removed without explanation on 2026-06-30. This is a preserved copy (MIT license) with two small fixes for
+> running against local OpenAI-compatible servers on macOS — see [Fixes in this mirror](#fixes-in-this-mirror).
+> Surviving model weights: [ShaunGves/FastContext-1.0-4B-SFT](https://huggingface.co/ShaunGves/FastContext-1.0-4B-SFT).
+
 FastContext is a lightweight repository-exploration subagent for coding agents. Instead of letting the main
 coding agent spend its own context window on broad file reads and code searches, the main agent delegates
 a natural-language context query to FastContext. FastContext explores the repository with read-only tools,
@@ -121,6 +126,38 @@ export API_KEY="your-api-key"
 
 Benchmark runners may also pass separate FastContext credentials through `FASTCONTEXT_*` variables in
 `benchmark/evaluation/configs/example.env`.
+
+### Local serving on Apple Silicon (mlx-lm)
+
+The original BF16 safetensors run directly on Apple Silicon via [mlx-lm](https://github.com/ml-explore/mlx-lm)
+— no GGUF conversion needed (a 4B model uses ~8 GB of RAM). Ripgrep (`rg`) must be installed for the
+Glob/Grep tools (`brew install ripgrep`).
+
+```bash
+hf download ShaunGves/FastContext-1.0-4B-SFT --local-dir ./models/FastContext-1.0-4B-SFT
+
+# Newer transformers/mlx releases break this mlx-lm version; the pins matter.
+uv tool install "mlx-lm==0.29.1" --with "transformers<5" --with "mlx<0.31"
+
+mlx_lm.server --model ./models/FastContext-1.0-4B-SFT --port 8080
+```
+
+Then configure the CLI (the mlx-lm server loads whatever the request's `model` field names, so `MODEL`
+must be the local weights path):
+
+```bash
+export BASE_URL="http://127.0.0.1:8080/v1"
+export MODEL="/absolute/path/to/models/FastContext-1.0-4B-SFT"
+export API_KEY="local"
+```
+
+### Fixes in this mirror
+
+- `src/fastcontext/agent/llm.py`: synthesize tool-call ids when the server omits them (mlx-lm returns
+  `id: null`, which crashed the agent on the first tool call).
+- `src/fastcontext/agent/tool/grep.py`: resolve `rg` from `PATH` instead of the hardcoded `/usr/bin/rg`
+  (on macOS/Homebrew, ripgrep lives in `/opt/homebrew/bin`). Without this, every Grep call fails silently
+  and the explorer hallucinates citations when forced to answer.
 
 ## Quick Start
 

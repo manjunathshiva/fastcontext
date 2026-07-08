@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from .tool import Tool
@@ -65,7 +66,7 @@ class GrepTool(Tool):
     }
 
     # Adjust this path if ripgrep is not in your system PATH
-    _rg_path = "/usr/bin/rg"
+    _rg_path = shutil.which("rg") or "/usr/bin/rg"
 
     async def call(self, parameters: str, **kwargs) -> str:
         params: dict = json.loads(parameters)
