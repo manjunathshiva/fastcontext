@@ -142,8 +142,25 @@ The explorer weights are available in several formats — pick whichever fits yo
 server, and point the CLI at `BASE_URL=http://localhost:1234/v1` with `MODEL` set to the LM Studio model
 identifier (e.g. `fastcontext-1.0-4b-sft`).
 
-**Ollama**: `ollama pull` the GGUF above, then use `BASE_URL=http://localhost:11434/v1` with `MODEL` set
-to the pulled model name.
+**Ollama**: `ollama pull` the GGUF above — but don't use it directly: Ollama's auto-derived chat template
+for this GGUF force-opens a `<think>` block, and FastContext's base model (Qwen3-4B-Instruct-2507) is the
+non-thinking variant, so every response comes back empty (the model emits an immediate stop token). Create
+a wrapper model with the bad line removed (reuses the already-pulled weights, no re-download):
+
+```bash
+{
+  echo 'FROM hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF'
+  echo 'TEMPLATE """'
+  ollama show --template hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF | sed '/^<think>$/d'
+  echo '"""'
+} > Modelfile
+ollama create fastcontext-ollama -f Modelfile
+```
+
+Then use `BASE_URL=http://localhost:11434/v1` with `MODEL=fastcontext-ollama`. Verified end to end:
+citation accuracy comparable to the MLX 8-bit quant at ~11 s/query on an M4. (Note: Ollama's MLX engine
+preview does not change this — the `hf.co/...` pull path still requires GGUF, so the mlx-community quants
+above cannot be pulled via Ollama.)
 
 For quantized models, lower the sampling temperature and cap generation length via the environment
 overrides (defaults match the paper's serving setup):
@@ -185,6 +202,9 @@ export API_KEY="local"
 - `src/fastcontext/agent/tool/grep.py`: resolve `rg` from `PATH` instead of the hardcoded `/usr/bin/rg`
   (on macOS/Homebrew, ripgrep lives in `/opt/homebrew/bin`). Without this, every Grep call fails silently
   and the explorer hallucinates citations when forced to answer.
+- Not a code fix, but documented above: Ollama's auto-derived chat template for the community GGUF breaks
+  the model entirely (empty responses) — see the Modelfile workaround in
+  [Choosing a model format](#choosing-a-model-format).
 
 ## Quick Start
 
