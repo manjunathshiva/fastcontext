@@ -145,17 +145,23 @@ identifier (e.g. `fastcontext-1.0-4b-sft`).
 **Ollama**: `ollama pull` the GGUF above — but don't use it directly: Ollama's auto-derived chat template
 for this GGUF force-opens a `<think>` block, and FastContext's base model (Qwen3-4B-Instruct-2507) is the
 non-thinking variant, so every response comes back empty (the model emits an immediate stop token). Create
-a wrapper model with the bad line removed (reuses the already-pulled weights, no re-download):
+a wrapper model with the bad lines removed (reuses the already-pulled weights, no re-download):
 
 ```bash
 {
   echo 'FROM hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF'
   echo 'TEMPLATE """'
-  ollama show --template hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF | sed '/^<think>$/d'
+  ollama show --template hf.co/mitkox/FastContext-1.0-4B-RL-Q8_0-GGUF | sed '/<think>/d'
   echo '"""'
 } > Modelfile
 ollama create fastcontext-ollama -f Modelfile
 ```
+
+Ollama's auto-derived template has changed across versions — older ones end the prompt with a bare
+`<think>` line, newer ones (0.32+) additionally render `<think>{{ .Thinking }}</think>` inside a
+conditional block — so the `sed` deletes any line containing the tag; the emptied `{{ if }}...{{ end }}`
+block left behind renders nothing. Re-verified against Ollama 0.32.4. If your version's template differs
+again, open the Modelfile and delete every line mentioning `think` before `ollama create`.
 
 Then use `BASE_URL=http://localhost:11434/v1` with `MODEL=fastcontext-ollama`. Verified end to end:
 citation accuracy comparable to the MLX 8-bit quant at ~11 s/query on an M4. (Note: Ollama's MLX engine
